@@ -4,6 +4,8 @@
 #include <unistd.h> 
 #include <stdio.h>  
 #include <errno.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 int printerror(){
     printf("error number %d\n",errno);
@@ -22,8 +24,8 @@ int printerror(){
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_setup() {
-  char* pipe_name = WKP;
   int from_client = 0;
+  char* pipe_name = WKP;
   if (mkfifo(pipe_name, 0666) == -1) {
     printf("WKP creation failed");
     printerror();
@@ -55,6 +57,32 @@ int server_setup() {
   =========================*/
 int server_handshake(int *to_client) {
   int from_client;
+  char buffer[200];
+  from_client = server_setup();
+  int b = read(from_client, buffer, sizeof(buffer));
+  if (b <= 0) {
+    printf("Parent did not receive response\n");
+    return 1;
+  }
+  if (mkfifo(buffer, 0666) < 0) {
+    printf("mkfifo failed\n");
+    printerror();
+    return 1;
+  }
+  int fd = open("/dev/urandom", O_RDONLY);
+  int seed;
+  read(fd, &seed, sizeof(seed));
+  close(fd);
+  srand(seed);
+  int randnum = rand();
+  int fifo = open(buffer, O_WRONLY);
+  if (fifo == -1) {
+    printerror();
+    return 1;
+  }
+  write(fifo, randnum, sizeof(randnum));
+  close(fifo)
+  sscanf(buffer, "%d", to_client);
   return from_client;
 }
 
