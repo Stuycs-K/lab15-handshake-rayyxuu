@@ -1,4 +1,16 @@
 #include "pipe_networking.h"
+#include <fcntl.h>  
+#include <sys/stat.h> 
+#include <unistd.h> 
+#include <stdio.h>  
+#include <errno.h>
+
+int printerror(){
+    printf("error number %d\n",errno);
+    printf("error: %s\n", strerror(errno));
+    return 0;
+}
+
 //UPSTREAM = to the server / from the client
 //DOWNSTREAM = to the client / from the server
 /*=========================
@@ -10,7 +22,25 @@
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_setup() {
+  char* pipe_name = WKP;
   int from_client = 0;
+  if (mkfifo(pipe_name, 0666) == -1) {
+    printf("WKP creation failed");
+    printerror();
+    return -1;  
+  }
+  printf("WKP created, waiting for a connection\n");
+  from_client = open(pipe_name, O_RDONLY);
+  if (from_client == -1) {
+    printf("WKP opening failed");
+    printerror();
+    return -1;  
+  }
+  printf("Client connected, removing WKP\n");
+  if (unlink(pipe_name) == -1) {
+      printf("WKP removal failed");
+      printerror();
+  }
   return from_client;
 }
 
