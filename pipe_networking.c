@@ -62,27 +62,28 @@ int server_handshake(int *to_client) {
   int b = read(from_client, buffer, sizeof(buffer));
   if (b <= 0) {
     printf("Parent did not receive response\n");
-    return 1;
+    return -1;
   }
   if (mkfifo(buffer, 0666) < 0) {
     printf("mkfifo failed\n");
     printerror();
-    return 1;
+    return -1;
   }
-  int fd = open("/dev/urandom", O_RDONLY);
+  int fd = open("/dev/urandom", O_RDWR);
   int seed;
   read(fd, &seed, sizeof(seed));
   close(fd);
   srand(seed);
   int randnum = rand();
-  int fifo = open(buffer, O_WRONLY);
+  int fifo = open(buffer, RDWR);
   if (fifo == -1) {
     printerror();
-    return 1;
+    return -1;
   }
   write(fifo, randnum, sizeof(randnum));
-  close(fifo)
+  close(fifo);
   sscanf(buffer, "%d", to_client);
+  //INCOMPLETE
   return from_client;
 }
 
@@ -98,21 +99,26 @@ int server_handshake(int *to_client) {
   =========================*/
 int client_handshake(int *to_server) {
   int from_server;
+  char buffer[200] = "/tmp/verysecretfifo";
+  char bufferread[200];
+  int numinco;
+  buffer[strlen(buffer)] = '\0';
+  from_client = server_setup();
+  write(from_client, buffer, strlen(buffer)+1);
+  if (mkfifo(buffer, 0666) < 0) {
+    printf("mkfifo failed\n");
+    printerror();
+    return -1;
+  }
+  int fifo = open(buffer, O_RDWR);
+  if (fifo == -1) {
+    printerror();
+    return -1;
+  }
+  remove(buffer);
+  int b = read(fifo, bufferread, sizeof(bufferread));
+  sscanf(bufferread, "%d", &numinco);
   return from_server;
-}
-
-
-/*=========================
-  server_connect
-  args: int from_client
-
-  handles the subserver portion of the 3 way handshake
-
-  returns the file descriptor for the downstream pipe.
-  =========================*/
-int server_connect(int from_client) {
-  int to_client  = 0;
-  return to_client;
 }
 
 
