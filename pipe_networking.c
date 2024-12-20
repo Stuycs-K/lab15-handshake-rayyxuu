@@ -66,11 +66,13 @@ int server_handshake(int *to_client) {
     printf("Server did not receive response\n");
     return -1;
   }
+  /*
   if (mkfifo(buffer, 0666) < 0) {
     printf("Server mkfifo failed\n");
     printerror();
     return -1;
   }
+  */
   int fd = open("/dev/urandom", O_RDONLY);
   int seed;
   read(fd, &seed, sizeof(seed));
@@ -84,7 +86,9 @@ int server_handshake(int *to_client) {
     return -1;
   }
   printf("Server sending random number SYN_ACK\n");
-  write(fifo, randnum, sizeof(randnum));
+  char randnumbuf[20];
+  sprintf(randnumbuf, "%d", randnum);
+  write(fifo, randnumbuf, strlen(randnumbuf)+1);
   sscanf(buffer, "%d", to_client);
   printf("Server reading ACK\n");
   int a = read(fifo, bufferrec, sizeof(bufferrec));
@@ -123,10 +127,14 @@ int client_handshake(int *to_server) {
   char bufferread[200];
   int numinco;
   buffer[strlen(buffer)] = '\0';
-  printf("Client opening WKP\n");
-  from_server = server_setup();
+  *to_server = open(WKP, O_WRONLY); 
+  if (*to_server == -1) {
+    printf("Client failed to open WKP\n");
+    printerror();
+    return -1;
+  }
   printf("Client writing PP to WKP\n");
-  write(from_server, buffer, strlen(buffer)+1);
+  write(*to_server, buffer, strlen(buffer) + 1);
   if (mkfifo(buffer, 0666) < 0) {
     printf("Client mkfifo failed\n");
     printerror();
@@ -147,8 +155,11 @@ int client_handshake(int *to_server) {
     return -1;
   }
   sscanf(bufferread, "%d", &numinco);
+  numinco++;
   printf("Client sending ACK\n");
-  write(fifo, numinco+1, sizeof(numinco+1));
+  char numincobuff[20];
+  sprintf(numincobuff, "%d", numinco);
+  write(fifo, numincobuff, strlen(numincobuff)+1);
   return from_server;
 }
 
