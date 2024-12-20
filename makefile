@@ -1,6 +1,7 @@
 all: client server
+
 client: basic_client.o pipe_networking.o
-  gcc -o client basic_client.o pipe_networking.o
+	gcc -o client basic_client.o pipe_networking.o
 
 server: basic_server.o pipe_networking.o
 	gcc -o server basic_server.o pipe_networking.o
