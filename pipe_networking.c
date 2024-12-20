@@ -58,7 +58,9 @@ int server_setup() {
 int server_handshake(int *to_client) {
   int from_client;
   char buffer[200];
+  char bufferrec[200];
   from_client = server_setup();
+  printf("Reading SYN\n");
   int b = read(from_client, buffer, sizeof(buffer));
   if (b <= 0) {
     printf("Parent did not receive response\n");
@@ -69,21 +71,33 @@ int server_handshake(int *to_client) {
     printerror();
     return -1;
   }
-  int fd = open("/dev/urandom", O_RDWR);
+  int fd = open("/dev/urandom", O_RDONLY);
   int seed;
   read(fd, &seed, sizeof(seed));
   close(fd);
   srand(seed);
   int randnum = rand();
-  int fifo = open(buffer, RDWR);
+  printf("Opening PP\n");
+  int fifo = open(buffer, O_RDWR);
   if (fifo == -1) {
     printerror();
     return -1;
   }
+  printf("Sending random number SYN_ACK\n");
   write(fifo, randnum, sizeof(randnum));
-  close(fifo);
   sscanf(buffer, "%d", to_client);
-  //INCOMPLETE
+  printf("Reading ACK\n");
+  read(fifo, bufferrec, sizeof(bufferrec));
+  int numrec;
+  sscanf(bufferrec, "%d", &numrec);
+  if (numrec==randnum+1) {
+    printf("Server received ACK, handshake complete\n");
+  }
+  else {
+    printf("Server did not receive ACK, failed\n");
+    return -1;
+  }
+  close(fifo);
   return from_client;
 }
 
