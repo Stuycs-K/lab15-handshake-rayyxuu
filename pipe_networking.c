@@ -27,20 +27,20 @@ int server_setup() {
   int from_client = 0;
   char* pipe_name = WKP;
   if (mkfifo(pipe_name, 0666) == -1) {
-    printf("WKP creation failed");
+    printf("WKP creation failed\n");
     printerror();
     return -1;  
   }
   printf("WKP created, waiting for a connection\n");
   from_client = open(pipe_name, O_RDONLY);
   if (from_client == -1) {
-    printf("WKP opening failed");
+    printf("WKP opening failed\n");
     printerror();
     return -1;  
   }
   printf("Client connected, removing WKP\n");
   if (unlink(pipe_name) == -1) {
-      printf("WKP removal failed");
+      printf("WKP removal failed\n");
       printerror();
   }
   return from_client;
@@ -60,14 +60,14 @@ int server_handshake(int *to_client) {
   char buffer[200];
   char bufferrec[200];
   from_client = server_setup();
-  printf("Reading SYN\n");
+  printf("Server reading SYN\n");
   int b = read(from_client, buffer, sizeof(buffer));
   if (b <= 0) {
-    printf("Parent did not receive response\n");
+    printf("Server did not receive response\n");
     return -1;
   }
   if (mkfifo(buffer, 0666) < 0) {
-    printf("mkfifo failed\n");
+    printf("Server mkfifo failed\n");
     printerror();
     return -1;
   }
@@ -77,28 +77,33 @@ int server_handshake(int *to_client) {
   close(fd);
   srand(seed);
   int randnum = rand();
-  printf("Opening PP\n");
+  printf("Server opening PP\n");
   int fifo = open(buffer, O_RDWR);
   if (fifo == -1) {
     printerror();
     return -1;
   }
-  printf("Sending random number SYN_ACK\n");
+  printf("Server sending random number SYN_ACK\n");
   write(fifo, randnum, sizeof(randnum));
   sscanf(buffer, "%d", to_client);
-  printf("Reading ACK\n");
-  read(fifo, bufferrec, sizeof(bufferrec));
+  printf("Server reading ACK\n");
+  int a = read(fifo, bufferrec, sizeof(bufferrec));
+  if (a <= 0) {
+    printf("Server did not receive ACK\n");
+    return -1;
+  }
   int numrec;
   sscanf(bufferrec, "%d", &numrec);
   if (numrec==randnum+1) {
     printf("Server received ACK, handshake complete\n");
+    close(fifo);
+    return from_client;
   }
   else {
-    printf("Server did not receive ACK, failed\n");
+    printf("Server did not receive correct ACK, failed\n");
+    close(fifo);
     return -1;
   }
-  close(fifo);
-  return from_client;
 }
 
 
@@ -113,25 +118,37 @@ int server_handshake(int *to_client) {
   =========================*/
 int client_handshake(int *to_server) {
   int from_server;
+  printf("Client making private pipe PP\n");
   char buffer[200] = "/tmp/verysecretfifo";
   char bufferread[200];
   int numinco;
   buffer[strlen(buffer)] = '\0';
-  from_client = server_setup();
-  write(from_client, buffer, strlen(buffer)+1);
+  printf("Client opening WKP\n");
+  from_server = server_setup();
+  printf("Client writing PP to WKP\n");
+  write(from_server, buffer, strlen(buffer)+1);
   if (mkfifo(buffer, 0666) < 0) {
-    printf("mkfifo failed\n");
+    printf("Client mkfifo failed\n");
     printerror();
     return -1;
   }
+  printf("Client opening PP\n");
   int fifo = open(buffer, O_RDWR);
   if (fifo == -1) {
     printerror();
     return -1;
   }
-  remove(buffer);
+  printf("Client deleting PP\n");
+  unlink(buffer);
+  printf("Client reading SYN_ACK\n");
   int b = read(fifo, bufferread, sizeof(bufferread));
+  if (b <= 0) {
+    printf("Client did not receive response\n");
+    return -1;
+  }
   sscanf(bufferread, "%d", &numinco);
+  printf("Client sending ACK\n");
+  write(fifo, numinco+1, sizeof(numinco+1));
   return from_server;
 }
 
