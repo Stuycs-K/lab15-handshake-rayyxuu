@@ -64,8 +64,10 @@ int server_handshake(int *to_client) {
   int b = read(from_client, buffer, sizeof(buffer));
   if (b <= 0) {
     printf("Server did not receive response\n");
+    close(from_client);
     return -1;
   }
+  close(from_client);
   int fd = open("/dev/urandom", O_RDONLY);
   int seed;
   read(fd, &seed, sizeof(seed));
@@ -73,24 +75,25 @@ int server_handshake(int *to_client) {
   srand(seed);
   int randnum = rand();
   printf("Server opening PP\n");
-  int fifo = open(buffer, O_WRONLY);
-  if (fifo == -1) {
+  *to_client = open(buffer, O_WRONLY);
+  if (*to_client == -1) {
+    printf("Server: Downstream pipe opening failed\n");
+    printerror();
+    return -1;
+  }
+  from_client = open(buffer, O_RDONLY);
+  if (from_client == -1) {
+    printf("Server: Upstream pipe opening failed\n");
     printerror();
     return -1;
   }
   printf("Server sending random number SYN_ACK: %d\n", randnum);
   char randnumbuf[20];
   sprintf(randnumbuf, "%d", randnum);
-  write(fifo, randnumbuf, strlen(randnumbuf)+1);
-  sscanf(buffer, "%d", to_client);
-  close(fifo);
-  fifo = open(buffer, O_RDONLY);
-  if (fifo == -1) {
-    printerror();
-    return -1;
-  }
+  write(*to_client, randnumbuf, strlen(randnumbuf)+1);
+  //sscanf(buffer, "%d", from_client);
   printf("Server reading ACK\n");
-  int a = read(fifo, bufferrec, sizeof(bufferrec));
+  int a = read(from_client, bufferrec, sizeof(bufferrec));
   if (a < 0) {
     printf("Server did not receive ACK\n");
     return -1;
@@ -99,12 +102,13 @@ int server_handshake(int *to_client) {
   sscanf(bufferrec, "%d", &numrec);
   if (numrec==randnum+1) {
     printf("Server received ACK %d, handshake complete\n", numrec);
-    close(fifo);
+    close(*to_client);
     return from_client;
   }
   else {
     printf("Server did not receive correct ACK (received %d), failed\n", numrec);
-    close(fifo);
+    close(*to_client);
+    close(from_client);
     return -1;
   }
 }
@@ -135,21 +139,29 @@ int client_handshake(int *to_server) {
   }
   printf("Client writing PP to WKP\n");
   write(*to_server, buffer, strlen(buffer) + 1);
+  close(*to_server);
   if (mkfifo(buffer, 0666) < 0) {
     printf("Client mkfifo failed\n");
     printerror();
     return -1;
   }
   printf("Client opening PP\n");
-  int fifo = open(buffer, O_RDONLY);
-  if (fifo == -1) {
+  from_server = open(buffer, O_RDONLY);
+  if (from_server == -1) {
+    printf("Client: Downstream pipe opening failed\n");
+    printerror();
+    return -1;
+  }
+  *to_server  = open(buffer, O_WRONLY);
+  if (*to_server == -1) {
+    printf("Client: Upstream pipe opening failed\n");
     printerror();
     return -1;
   }
   printf("Client deleting PP\n");
   unlink(buffer);
   printf("Client reading SYN_ACK\n");
-  int b = read(fifo, bufferread, sizeof(bufferread));
+  int b = read(from_server, bufferread, sizeof(bufferread));
   if (b < 0) {
     printf("Client did not receive response\n");
     return -1;
@@ -159,14 +171,8 @@ int client_handshake(int *to_server) {
   printf("Client sending ACK: %d\n", numinco+1);
   char numincobuff[20];
   sprintf(numincobuff, "%d", numinco+1);
-  close(fifo);
-  fifo = open(buffer, O_WRONLY);
-  if (fifo == -1) {
-    printerror();
-    return -1;
-  }
-  write(fifo, numincobuff, strlen(numincobuff)+1);
-  close(fifo);
+  write(*to_server, numincobuff, strlen(numincobuff)+1);
+  close(*to_server);
   return from_server;
 }
 
