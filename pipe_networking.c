@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <time.h>
 
 int printerror(){
     printf("error number %d\n",errno);
@@ -100,12 +101,23 @@ int server_handshake(int *to_client) {
   sscanf(bufferrec, "%d", &numrec);
   if (numrec==randnum+1) {
     printf("Server received ACK %d, handshake complete\n", numrec);
-    return from_client;
+    //return from_client;
   }
   else {
     printf("Server did not receive correct ACK (received %d), failed\n", numrec);
     return -1;
   }
+
+  while (1) {
+    srand(time(NULL));
+    int newrandnum = (rand()%100) + 1;
+    char newrandnumbuf[20];
+    sprintf(newrandnumbuf, "%d", newrandnum);
+    write(*to_client, newrandnumbuf, strlen(newrandnumbuf)+1);
+    sleep(1);
+  }
+
+  return from_client;
 }
 
 
@@ -168,6 +180,18 @@ int client_handshake(int *to_server) {
   char numincobuff[20];
   sprintf(numincobuff, "%d", numinco+1);
   write(*to_server, numincobuff, strlen(numincobuff)+1);
+
+  while (1) {
+    char newrandnumbuf[20];
+    int ck = read(from_server, newrandnumbuf, sizeof(newrandnumbuf));
+    if (ck < 0) {
+      printf("Client did not receive response\n");
+      return -1;
+    }
+    int receivedrandnum;
+    sscanf(newrandnumbuf, "%d", &receivedrandnum);
+    printf("Client received: %d\n", receivedrandnum);
+  }
   return from_server;
 }
 
