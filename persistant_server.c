@@ -16,6 +16,7 @@ int main() {
     int to_client;
     int from_client;
     signal(SIGINT, sighandler);    
+    signal(SIGPIPE, SIG_IGN);
     while (1) {
         from_client = server_handshake( &to_client );
         sleep(2);
@@ -31,9 +32,17 @@ int main() {
                 char buffer[20];
                 sprintf(buffer, "%d", randnum);
                 printf("Server sending: %s\n", buffer);
-                if (write(to_client, buffer, strlen(buffer) + 1) < 0) {
+                if (write(to_client, buffer, strlen(buffer) + 1) <= 0) {
+                    if (errno == EPIPE) {
+                        printf("Broken pipe detected. Client disconnected.\n");
+                    } else {
+                        printf("Write failed: %s\n", strerror(errno));
+                    }
+                    break; // Exit the loop if write fails
+                    /*
                     printf("Server sending failed\n");
                     break;
+                    */
                 }
             }
         }

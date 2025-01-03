@@ -17,8 +17,8 @@ int main() {
 
     from_server = client_handshake( &to_server );
     sleep(2);
+    signal(SIGINT, sighandler);
     while (1) {
-        signal(SIGINT, sighandler);
         char buffer[20];
         int b = read(from_server, buffer, sizeof(buffer));
         if (b < 0) {

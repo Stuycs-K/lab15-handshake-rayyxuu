@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <time.h>
 
 int printerror(){
     printf("error number %d\n",errno);
@@ -131,7 +130,6 @@ int server_handshake(int *to_client) {
     }
   }
   */
-  return from_client;
 }
 
 
