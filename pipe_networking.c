@@ -85,6 +85,7 @@ int server_handshake(int *to_client) {
   sprintf(randnumbuf, "%d", randnum);
   write(*to_client, randnumbuf, strlen(randnumbuf)+1);
   printf("Server opening PP to read ACK\n");
+  close(*to_client);
   from_client = open(buffer, O_RDONLY);
   if (from_client == -1) {
     printf("Server: Upstream pipe opening failed\n");
@@ -107,7 +108,13 @@ int server_handshake(int *to_client) {
     printf("Server did not receive correct ACK (received %d), failed\n", numrec);
     return -1;
   }
-
+  close(from_client);
+  *to_client = open(buffer, O_WRONLY);
+  if (*to_client == -1) {
+    printf("Server: Downstream pipe opening failed\n");
+    printerror();
+    return -1;
+  }
   while (1) {
     srand(time(NULL));
     int newrandnum = (rand()%100) + 1;
