@@ -85,7 +85,7 @@ int server_handshake(int *to_client) {
   sprintf(randnumbuf, "%d", randnum);
   write(*to_client, randnumbuf, strlen(randnumbuf)+1);
   printf("Server opening PP to read ACK\n");
-  close(*to_client);
+  //close(*to_client);
   from_client = open(buffer, O_RDONLY);
   if (from_client == -1) {
     printf("Server: Upstream pipe opening failed\n");
@@ -102,28 +102,35 @@ int server_handshake(int *to_client) {
   sscanf(bufferrec, "%d", &numrec);
   if (numrec==randnum+1) {
     printf("Server received ACK %d, handshake complete\n", numrec);
-    //return from_client;
+    return from_client;
   }
   else {
     printf("Server did not receive correct ACK (received %d), failed\n", numrec);
     return -1;
   }
-  close(from_client);
+  //close(from_client);
+  /*
   *to_client = open(buffer, O_WRONLY);
   if (*to_client == -1) {
     printf("Server: Downstream pipe opening failed\n");
     printerror();
     return -1;
   }
+  */
+  /*
   while (1) {
+    sleep(1);
     srand(time(NULL));
     int newrandnum = (rand()%100) + 1;
     char newrandnumbuf[20];
     sprintf(newrandnumbuf, "%d", newrandnum);
-    write(*to_client, newrandnumbuf, strlen(newrandnumbuf)+1);
-    sleep(1);
+    printf("Server sending %s\n", newrandnumbuf);
+    if (write(*to_client, newrandnumbuf, strlen(newrandnumbuf)+1)<0) {
+      printf("Server failed to write to client\n");
+      break;
+    }
   }
-
+  */
   return from_client;
 }
 
@@ -160,6 +167,7 @@ int client_handshake(int *to_server) {
     return -1;
   }
   printf("Client opening PP to read SYN_ACK\n");
+  //close(*toserver);
   from_server = open(buffer, O_RDONLY);
   if (from_server == -1) {
     printf("Client: Downstream pipe opening failed\n");
@@ -174,6 +182,7 @@ int client_handshake(int *to_server) {
   }
   sscanf(bufferread, "%d", &numinco);
   printf("Client received SYN_ACK: %d\n", numinco);
+  //close(from_server);
   printf("Client opening PP to write ACK\n");
   *to_server  = open(buffer, O_WRONLY);
   if (*to_server == -1) {
@@ -187,7 +196,17 @@ int client_handshake(int *to_server) {
   char numincobuff[20];
   sprintf(numincobuff, "%d", numinco+1);
   write(*to_server, numincobuff, strlen(numincobuff)+1);
-
+  //close(*to_server);
+  /*
+  from_server = open(buffer, O_RDONLY);
+  if (from_server == -1) {
+    printf("Client: Downstream pipe opening failed\n");
+    printerror();
+    return -1;
+  }
+  */
+  /*
+  sleep(1);
   while (1) {
     char newrandnumbuf[20];
     int ck = read(from_server, newrandnumbuf, sizeof(newrandnumbuf));
@@ -199,6 +218,7 @@ int client_handshake(int *to_server) {
     sscanf(newrandnumbuf, "%d", &receivedrandnum);
     printf("Client received: %d\n", receivedrandnum);
   }
+  */
   return from_server;
 }
 
