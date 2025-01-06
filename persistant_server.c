@@ -36,12 +36,12 @@ int main() {
         printf("Client connected. Sending...\n");
         srand(time(NULL));
         sleep(1);
-        while (1) { 
-            int randnum = rand() % 101; 
+        while (1) {
+            int randnum = rand() % 101;
             printf("Sending: %d\n", randnum);
             int test = write(to_client, &randnum, sizeof(randnum));
             //printf("%d\n", test);
-            if (test == -1) {
+            if (test <= 0) {
                 printf("Error writing to client\n");
                 break;
             }
