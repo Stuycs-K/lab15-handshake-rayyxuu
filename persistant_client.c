@@ -13,8 +13,10 @@ void sigint_handler(int signo) {
     if (signo == SIGINT) {
         printf("\nClient shutting down gracefully...\n");
         client_running = 0;
+        int sig = -1; 
+        write(to_server, &sig, sizeof(sig)); 
         close(from_server);
-        //close(to_server);
+        close(to_server);
         exit(0);
     }
 }
@@ -40,6 +42,9 @@ int main() {
             break;
         }
         printf("Received: %d\n", randnum);
+        int sig = 0; 
+        write(to_server, &sig, sizeof(sig));
+        sleep(1);
     }
     printf("Server disconnected. Exiting...\n");
     close(from_server);

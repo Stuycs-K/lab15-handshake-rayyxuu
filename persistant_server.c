@@ -35,14 +35,20 @@ int main() {
         }
         printf("Client connected. Sending...\n");
         srand(time(NULL));
-        while (1) {
-            sleep(1); 
+        sleep(1);
+        while (1) { 
             int randnum = rand() % 101; 
             printf("Sending: %d\n", randnum);
             int test = write(to_client, &randnum, sizeof(randnum));
             //printf("%d\n", test);
             if (test == -1) {
                 printf("Error writing to client\n");
+                break;
+            }
+            sleep(1);
+            int recv_sig;
+            if (read(from_client, &recv_sig, sizeof(recv_sig)) > 0 && recv_sig == -1) {
+                printf("Client sent termination signal. Disconnecting...\n");
                 break;
             }
         }
