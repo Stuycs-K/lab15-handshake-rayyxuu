@@ -1,54 +1,54 @@
 #include "pipe_networking.h"
-#include <time.h>
+#include <signal.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <time.h>
 
-static void sighandler(int tsig) {
-    if (tsig == SIGINT){
-        printf("Exiting very nicely\n");
-        if (unlink(WKP) == -1) {
-            printf("WKP closure failed\n");
+int to_client;
+int from_client;
+int server_running = 1;
+
+void sigint_handler(int signo) {
+    if (signo == SIGINT) {
+        printf("\nServer shutting down gracefully...\n");
+        unlink(WKP);
+        server_running = 0;
+        if (to_client > 0) {
+            int sig = -1;
+            write(to_client, &sig, sizeof(sig));
         }
         exit(0);
     }
 }
 
 int main() {
-    int to_client;
-    int from_client;
-    signal(SIGINT, sighandler);    
+    signal(SIGINT, sigint_handler);
     signal(SIGPIPE, SIG_IGN);
-    while (1) {
-        from_client = server_handshake( &to_client );
-        sleep(2);
+
+    while (server_running) {
+        printf("Waiting for a new client...\n");
+        from_client = server_handshake(&to_client);
         if (from_client == -1 || to_client == -1) {
-            printf("Error during handshake\n");
+            printf("Error during handshake. Continuing to next client...\n");
+            continue;
         }
-        else {
-            printf("Entering loop\n");
-            while (1) {
-                sleep(1);
-                srand(time(NULL)); 
-                int randnum = (rand() % 100) + 1;
-                char buffer[20];
-                sprintf(buffer, "%d", randnum);
-                printf("Server sending: %s\n", buffer);
-                if (write(to_client, buffer, strlen(buffer) + 1) <= 0) {
-                    if (errno == EPIPE) {
-                        printf("Broken pipe detected. Client disconnected.\n");
-                    } else {
-                        printf("Write failed: %s\n", strerror(errno));
-                    }
-                    break; // Exit the loop if write fails
-                    /*
-                    printf("Server sending failed\n");
-                    break;
-                    */
-                }
+        printf("Client connected. Sending...\n");
+        srand(time(NULL));
+        while (1) {
+            sleep(1); 
+            int randnum = rand() % 101; 
+            printf("Sending: %d\n", randnum);
+            int test = write(to_client, &randnum, sizeof(randnum));
+            printf("%d\n", test);
+            if (test == -1) {
+                printf("Error writing to client\n");
+                break;
             }
         }
+        printf("Client disconnected\n");
         close(from_client);
         close(to_client);
     }
-    
-    
+    return 0;
 }
