@@ -40,7 +40,7 @@ int main() {
             int randnum = rand() % 101; 
             printf("Sending: %d\n", randnum);
             int test = write(to_client, &randnum, sizeof(randnum));
-            printf("%d\n", test);
+            //printf("%d\n", test);
             if (test == -1) {
                 printf("Error writing to client\n");
                 break;

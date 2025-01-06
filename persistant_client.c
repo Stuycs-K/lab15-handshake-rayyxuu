@@ -8,15 +8,17 @@ int to_server;
 int from_server;
 int client_running = 1;
 
+
 void sigint_handler(int signo) {
     if (signo == SIGINT) {
         printf("\nClient shutting down gracefully...\n");
         client_running = 0;
         close(from_server);
-        close(to_server);
+        //close(to_server);
         exit(0);
     }
 }
+
 
 int main() {
     signal(SIGINT, sigint_handler);
