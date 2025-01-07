@@ -220,4 +220,54 @@ int client_handshake(int *to_server) {
   return from_server;
 }
 
-
+int server_handshake_half(int *to_client, int from_client){
+  char buffer[200];
+  char bufferrec[200];
+  printf("Server reading SYN\n");
+  int b = read(from_client, buffer, sizeof(buffer));
+  if (b <= 0) {
+    printf("Server did not receive response\n");
+    return -1;
+  }
+  int fd = open("/dev/urandom", O_RDONLY);
+  int seed;
+  read(fd, &seed, sizeof(seed));
+  close(fd);
+  srand(seed);
+  int randnum = rand();
+  printf("Server opening PP to write SYN_ACK\n");
+  *to_client = open(buffer, O_WRONLY);
+  if (*to_client == -1) {
+    printf("Server: Downstream pipe opening failed\n");
+    printerror();
+    return -1;
+  }
+  printf("Server sending random number SYN_ACK: %d\n", randnum);
+  char randnumbuf[20];
+  sprintf(randnumbuf, "%d", randnum);
+  write(*to_client, randnumbuf, strlen(randnumbuf)+1);
+  printf("Server opening PP to read ACK\n");
+  //close(*to_client);
+  from_client = open(buffer, O_RDONLY);
+  if (from_client == -1) {
+    printf("Server: Upstream pipe opening failed\n");
+    printerror();
+    return -1;
+  }
+  printf("Server reading ACK\n");
+  int a = read(from_client, bufferrec, sizeof(bufferrec));
+  if (a < 0) {
+    printf("Server did not receive ACK\n");
+    return -1;
+  }
+  int numrec;
+  sscanf(bufferrec, "%d", &numrec);
+  if (numrec==randnum+1) {
+    printf("Server received ACK %d, handshake complete\n", numrec);
+    return from_client;
+  }
+  else {
+    printf("Server did not receive correct ACK (received %d), failed\n", numrec);
+    return -1;
+  }
+}

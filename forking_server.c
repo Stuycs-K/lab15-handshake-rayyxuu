@@ -18,6 +18,8 @@ void sigint_handler(int signo) {
             int sig = -1;
             write(to_client, &sig, sizeof(sig));
         }
+        close(to_client);
+        close(from_client);
         exit(0);
     }
 }
@@ -29,12 +31,15 @@ int main() {
     while (server_running) {
         printf("Waiting for a new client...\n");
         from_client = server_setup();
+        printf("Server initiated setup, now forking...\n");
         pid_t p = fork();
         if (p<0) {
             printf("ERROR FORKING\n");
             return 1;
         }    
         else if (p==0) { 
+            printf("Subserver taking over, completing handshake...\n");
+            from_client = server_handshake_half(&to_client, from_client);
             if (from_client == -1 || to_client == -1) {
                 printf("Error during handshake. Continuing to next client...\n");
                 continue;
@@ -62,12 +67,6 @@ int main() {
         else {
             continue;
         }
-        
-        /*
-        printf("Client disconnected\n");
-        close(from_client);
-        close(to_client);
-        */
     }
     return 0;
 }
