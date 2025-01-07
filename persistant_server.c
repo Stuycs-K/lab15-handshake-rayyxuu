@@ -18,6 +18,8 @@ void sigint_handler(int signo) {
             int sig = -1;
             write(to_client, &sig, sizeof(sig));
         }
+        close(to_client);
+        close(from_client);
         exit(0);
     }
 }
