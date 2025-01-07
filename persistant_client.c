@@ -38,7 +38,7 @@ int main() {
             break;
         }
         if (randnum == -1) {
-            printf("Server exited, exiting.\n");
+            printf("Server disconnected. Exiting...\n");
             break;
         }
         printf("Received: %d\n", randnum);
@@ -46,7 +46,6 @@ int main() {
         write(to_server, &sig, sizeof(sig));
         sleep(1);
     }
-    printf("Server disconnected. Exiting...\n");
     close(from_server);
     close(to_server);
     return 0;
